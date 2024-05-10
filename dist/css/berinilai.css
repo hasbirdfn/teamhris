@@ -1,0 +1,16 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.header {
+   top: 5;
+}
+.nilai{
+    text-align: center;
+    font-size: 3vw;
+}
+.conten{
+   margin-left: 10vw;
+   margin-right: 10vw;
+}

@@ -1,0 +1,142 @@
+<?php
+
+class Hris_model extends CI_Model
+{
+    public function ambilUser()
+    {
+        return $this->db->get_where('data_karyawan', ['nik' => $this->session->userdata('nik')])->row_array();
+    }
+
+    public function ubahPassword($password_baru)
+    {
+        $password = password_hash($password_baru, PASSWORD_DEFAULT);
+
+        $this->db->set('password', $password);
+        $this->db->where('nik', $this->session->userdata('nik'));
+        $this->db->update('data_karyawan');
+    }
+
+    public function ubahProfile($data)
+    {
+        $nama = $this->input->post('nama');
+        $email = $this->input->post('email');
+        $alamat = $this->input->post('alamat');
+        $telepon = $this->input->post('telepon');
+
+        // cek jika ada gambar yang akan diuploud
+        $upload_gambar = $_FILES['foto']['name'];
+        if ($upload_gambar) {
+            $config['allowed_types'] = 'gif|jpg|png';
+            $config['max_size'] = '4024';
+            $config['upload_path'] = './dist/img/profile';
+
+            $this->load->library('upload', $config);
+
+            if ($this->upload->do_upload('foto')) {
+                $gambar_lama = $data['user']['foto'];
+                if ($gambar_lama != 'default.jpg') {
+                    unlink(FCPATH . 'dist/img/profile/' . $gambar_lama);
+                }
+
+                $gambar_baru = $this->upload->data('file_name');
+                $this->db->set('foto', $gambar_baru);
+            } else {
+                $this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">' . $this->upload->display_errors() . '</div>');
+                redirect('hris/ubahprofile');
+            }
+        }
+
+        $this->db->set('nama_karyawan', $nama);
+        $this->db->set('email', $email);
+        $this->db->set('alamat', $alamat);
+        $this->db->set('telepon', $telepon);
+        $this->db->where('nik', $this->session->userdata('nik'));
+        $this->db->update('data_karyawan');
+    }
+
+    public function cetakNilaiDashboard($bulantahun)
+    {
+        $query = $this->db->query("  SELECT 
+        jk.id_jamkerja,
+        dk.nik,
+        dk.nama_karyawan,
+        jk.tanggal,
+        (
+            SELECT 
+                CASE 
+                    WHEN SUM(pk.total_nilai) > 4 THEN SUM(pk.total_nilai) / 4
+                    ELSE SUM(pk.total_nilai)
+                END AS nilai_kuesioner
+            FROM 
+                performances___penilaian_kuesioner pk 
+            WHERE 
+                pk.nik_menilai = dk.nik AND pk.tanggal LIKE '%$bulantahun%'
+        ) AS total_nilai_kuesioner,
+        (
+            SELECT COUNT(jk2.nik)
+            FROM performances___inputjamkerja jk2 
+            WHERE jk2.nik = jk.nik AND jk2.tanggal = '$bulantahun'
+            GROUP BY jk2.tanggal, jk2.nik
+        ) AS total_kinerja,
+
+        (
+            SELECT COUNT(jamker.keterangan) 
+            FROM performances___inputjamkerja jamker  
+            WHERE jamker.keterangan = 'Tepat Waktu' AND jamker.nik = jk.nik AND jamker.tanggal = '$bulantahun'
+        ) AS waktu
+    FROM 
+        data_karyawan dk 
+        INNER JOIN performances___inputjamkerja jk ON jk.nik = dk.nik
+    WHERE 
+        jk.tanggal LIKE '%$bulantahun%'
+    GROUP BY 
+        jk.tanggal, dk.nik
+         ");
+        return $query->result_array();
+
+
+
+    }
+    public function laporan($bulantahun)
+    {
+        $query = $this->db->query(" SELECT 
+        jk.id_jamkerja,
+        dk.nik,
+        dk.nama_karyawan,
+        jk.tanggal,
+        (
+            SELECT 
+                CASE 
+                    WHEN SUM(pk.total_nilai) > 4 THEN SUM(pk.total_nilai) / 4
+                    ELSE SUM(pk.total_nilai)
+                END AS nilai_kuesioner
+            FROM 
+                performances___penilaian_kuesioner pk 
+            WHERE 
+                pk.nik_menilai = dk.nik AND pk.tanggal LIKE '%$bulantahun%'
+        ) AS total_nilai_kuesioner,
+        (
+            SELECT COUNT(jk2.nik)
+            FROM performances___inputjamkerja jk2 
+            WHERE jk2.nik = jk.nik AND jk2.tanggal = '$bulantahun'
+            GROUP BY jk2.tanggal, jk2.nik
+        ) AS total_kinerja,
+
+        (
+            SELECT COUNT(jamker.keterangan) 
+            FROM performances___inputjamkerja jamker  
+            WHERE jamker.keterangan = 'Tepat Waktu' AND jamker.nik = jk.nik AND jamker.tanggal = '$bulantahun'
+        ) AS waktu
+    FROM 
+        data_karyawan dk 
+        INNER JOIN performances___inputjamkerja jk ON jk.nik = dk.nik
+    WHERE 
+        jk.tanggal LIKE '%$bulantahun%'
+    GROUP BY 
+        jk.tanggal, dk.nik
+         ");
+        return $query->result_array();
+
+
+    }
+}
